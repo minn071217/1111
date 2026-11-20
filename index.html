@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전기요금 계산기</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:36px 16px;font-family:Arial,"Noto Sans KR",sans-serif;background:linear-gradient(135deg,#eaf2ff,#f7f9fc);color:#17243a}
+.container{max-width:760px;margin:auto}header{text-align:center;margin-bottom:26px}.icon{font-size:42px}h1{margin:8px 0;font-size:30px}header p{color:#64748b;margin:0}
+.card{background:white;border-radius:18px;padding:26px;box-shadow:0 10px 30px rgba(30,60,100,.08);margin-bottom:18px}
+label{display:block;font-weight:700;margin-bottom:10px}.input-row{display:flex;gap:10px}
+input{min-width:0;flex:1;padding:14px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;outline:none}
+input:focus{border-color:#2563eb;box-shadow:0 0 0 3px #dbeafe}
+button{border:0;border-radius:10px;padding:13px 18px;font-size:15px;font-weight:700;cursor:pointer;transition:transform .15s,opacity .15s}
+button:hover{opacity:.9;transform:translateY(-1px)}.primary{background:#2563eb;color:white}.secondary{background:#e8eef8;color:#334155}
+.result{display:none;background:#eff6ff;border:1px solid #bfdbfe}.result-label{color:#475569;font-size:14px}
+.amount{color:#1d4ed8;font-size:34px;font-weight:800;margin:8px 0}.detail{color:#475569;font-size:14px;line-height:1.8}
+.history-head{display:flex;justify-content:space-between;align-items:center;gap:12px}h2{font-size:19px;margin:0 0 16px}.history-head h2{margin:0}
+.history-list{padding:0;margin:16px 0 0;list-style:none}.history-list li{display:flex;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid #edf1f6;font-size:14px}
+.history-list li:last-child{border-bottom:0}.empty{color:#94a3b8;text-align:center;padding:22px 0 4px}
+.notice{color:#64748b;font-size:12px;line-height:1.6;margin:16px 4px}.error{color:#dc2626;font-size:13px;margin-top:9px;min-height:18px}
+@media(max-width:520px){body{padding:24px 12px}.card{padding:20px}h1{font-size:25px}.input-row{flex-direction:column}.input-row button{width:100%}.amount{font-size:29px}}
+</style>
+</head>
+<body>
+<main class="container">
+<header><div class="icon" aria-hidden="true">⚡</div><h1>전기요금 계산기</h1><p>전력 사용량을 입력하고 예상 전기요금을 확인해 보세요.</p></header>
+<section class="card">
+<label for="usage">전력 사용량 (kWh)</label>
+<div class="input-row"><input id="usage" type="number" min="0" step="0.1" placeholder="예: 150" aria-label="전력 사용량 입력"><button class="primary" id="calculateBtn">요금 계산하기</button></div>
+<div class="error" id="error" role="alert"></div>
+</section>
+<section class="card result" id="result" aria-live="polite"><div class="result-label">예상 전기요금</div><div class="amount" id="amount">0원</div><div class="detail" id="details"></div></section>
+<section class="card"><div class="history-head"><h2>계산 기록</h2><button class="secondary" id="clearBtn">기록 삭제</button></div><ul class="history-list" id="history"></ul><div class="empty" id="empty">아직 계산 기록이 없습니다.</div></section>
+<p class="notice">※ 학습용 예시 단가를 적용한 계산 결과입니다. 실제 전기요금은 누진 구간, 계절, 세금 및 기타 요금에 따라 달라질 수 있습니다.</p>
+</main>
+<script>
+function calculateBill(kwh){
+  let rate;
+  if(kwh<=200){rate=120;}
+  else if(kwh<=400){rate=180;}
+  else{rate=250;}
+  const basicFee=1000;
+  return {bill:basicFee+kwh*rate,rate:rate};
+}
+const records=[];
+function showHistory(){
+  const history=document.getElementById("history");
+  const empty=document.getElementById("empty");
+  history.innerHTML="";
+  if(records.length===0){empty.style.display="block";return;}
+  empty.style.display="none";
+  records.forEach((record,index)=>{
+    const item=document.createElement("li");
+    const left=document.createElement("span");
+    const right=document.createElement("strong");
+    left.textContent=`${index+1}. ${record.kwh.toFixed(1)} kWh`;
+    right.textContent=`${Math.round(record.bill).toLocaleString("ko-KR")}원`;
+    item.append(left,right);history.appendChild(item);
+  });
+}
+function calculate(){
+  const input=document.getElementById("usage");
+  const error=document.getElementById("error");
+  const result=document.getElementById("result");
+  const rawValue=input.value.trim();
+  const kwh=Number(rawValue);
+  error.textContent="";
+  if(rawValue===""||!Number.isFinite(kwh)||kwh<0){
+    error.textContent="0 이상의 숫자로 사용량을 입력해 주세요.";
+    result.style.display="none";input.focus();return;
+  }
+  const calculation=calculateBill(kwh);
+  records.push({kwh:kwh,bill:calculation.bill});
+  document.getElementById("amount").textContent=`${Math.round(calculation.bill).toLocaleString("ko-KR")}원`;
+  document.getElementById("details").textContent=`사용량 ${kwh.toFixed(1)} kWh · 적용 단가 ${calculation.rate}원/kWh · 기본요금 1,000원`;
+  result.style.display="block";showHistory();
+}
+document.getElementById("calculateBtn").addEventListener("click",calculate);
+document.getElementById("usage").addEventListener("keydown",event=>{if(event.key==="Enter")calculate();});
+document.getElementById("clearBtn").addEventListener("click",()=>{
+  records.length=0;showHistory();document.getElementById("result").style.display="none";document.getElementById("error").textContent="";
+});
+showHistory();
+</script>
+</body>
+</html>
